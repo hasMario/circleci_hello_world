@@ -1,61 +1,38 @@
-# Ruby CircleCI 2.0 configuration file
-#
-# Check https://circleci.com/docs/2.0/language-ruby/ for more details
-#
 version: 2
 jobs:
   build:
     docker:
-      # specify the version you desire here
-       - image: circleci/ruby:2.4.1-node-browsers
-
-      # Specify service dependencies here if necessary
-      # CircleCI maintains a library of pre-built images
-      # documented at https://circleci.com/docs/2.0/circleci-images/
-      # - image: circleci/postgres:9.4
-
-    working_directory: ~/repo
-
+      - image: circleci/android:api-26-alpha
     steps:
-      - checkout
-
-      # Download and cache dependencies
-      - restore_cache:
-          keys:
-          - v1-dependencies-{{ checksum "Gemfile.lock" }}
-          # fallback to using the latest cache if no exact match is found
-          - v1-dependencies-
-
       - run:
-          name: install dependencies
-          command: |
-            bundle install --jobs=4 --retry=3 --path vendor/bundle
-
-      - save_cache:
-          paths:
-            - ./vendor/bundle
-          key: v1-dependencies-{{ checksum "Gemfile.lock" }}
-
-      # Database setup
-      - run: bundle exec rake db:create
-      - run: bundle exec rake db:schema:load
-
-      # run tests!
+          name: Setup tmp directory and alias
+          command: mkdir ~/tmp && cd ~/tmp && alias ll='ls -l'
       - run:
-          name: run tests
-          command: |
-            mkdir /tmp/test-results
-            TEST_FILES="$(circleci tests glob "spec/**/*_spec.rb" | circleci tests split --split-by=timings)"
-
-            bundle exec rspec --format progress \
-                            --format RspecJunitFormatter \
-                            --out /tmp/test-results/rspec.xml \
-                            --format progress \
-                            "${TEST_FILES}"
-
-      # collect reports
-      - store_test_results:
-          path: /tmp/test-results
-      - store_artifacts:
-          path: /tmp/test-results
-          destination: test-results
+          name: Obtain node package
+          command: curl -O 'https://nodejs.org/dist/v6.11.4/node-v6.11.4-linux-x64.tar.xz'
+      - run:
+          name: Extract the node package contents
+          command: tar xfJ node-v6.11.4-linux-x64.tar.xz
+      - run:
+          name: Add the node bin to the PATH environment variable
+          command: export PATH=$PATH:/home/circleci/tmp/node-v6.11.4-linux-x64/bin/
+      - run:
+          name: Install Appium
+          command: npm install -g appium@1.6.5
+      - run:
+          name: Add the Java bin directory to the PATH environment variable
+          command: export PATH=$PATH:$JAVA_HOME/bin
+      - run:
+          name: Setup emulator
+          command: sdkmanager "system-images;android-22;default;armeabi-v7a" && echo "no" | avdmanager create avd -n test -k "system-images;android-22;default;armeabi-v7a"
+      - run:
+          name: Start the Appium server
+          command: appium
+          background: true
+      - run:
+          name: Launch emulator
+          command: export LD_LIBRARY_PATH=${ANDROID_HOME}/emulator/lib64:${ANDROID_HOME}/emulator/lib64/qt/lib && emulator64-arm -avd test -noaudio -no-boot-anim -no-window -accel on
+          background: true
+      - run:
+          name: Run Tests
+          command: rspec 'test_spec.rb' --tag screenshot_tests

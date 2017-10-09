@@ -1,0 +1,19 @@
+[caps]
+platformName = "Android"
+platformVersion = "5.1"
+deviceName = "test"
+
+app = "app/app-debug.apk"
+
+avd = "test"
+avdArgs = "-no-boot-anim"
+
+newCommandTimeout = 30
+
+rotatable = true
+orientation = "PORTRAIT"
+fullReset = true
+
+[appium_lib]
+sauce_username = ""
+sauce_access_key = ""
